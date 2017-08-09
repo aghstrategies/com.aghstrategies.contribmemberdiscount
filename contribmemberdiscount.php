@@ -3,6 +3,38 @@
 require_once 'contribmemberdiscount.civix.php';
 
 /**
+ * Implements hook_civicrm_buildForm().
+ *
+ * @link http://wiki.civicrm.org/confluence/display/CRMDOC/hook_civicrm_buildForm
+ */
+function contribmemberdiscount_civicrm_buildForm($formName, &$form) {
+  if ($formName == 'CRM_Contribute_Form_Contribution_Main') {
+    try {
+      $pages = civicrm_api3('Setting', 'get', array(
+        'sequential' => 1,
+        'return' => 'contribmemberdiscount_contribpages',
+      ));
+    }
+    catch (CiviCRM_API3_Exception $e) {
+      $error = $e->getMessage();
+      CRM_Core_Error::debug_log_message(t('API Error: %1', array(1 => $error, 'domain' => 'com.aghstrategies.customcivistylesui')));
+    }
+    if (!empty($pages['values'][0]['contribmemberdiscount_contribpages'])) {
+      print_r($pages['values'][0]['contribmemberdiscount_contribpages']); die();
+      if ($formName == 'CRM_Contribute_Form_Contribution_Main') {
+        if (in_array($form->getVar('_id'), $pages['values'][0]['contribmemberdiscount_contribpages'])) {
+          // check if user is logged in if so continue if not display message about discount
+          // check if user has proper membership type / status
+          // If user is logged in and has proper membership type and status do discount of amount to all price options
+          // CRM_Core_Resources::singleton()->addScriptFile('com.aghstrategies.customcivistylesui', 'js/pricesetbuttons.js');
+          // CRM_Core_Resources::singleton()->addStyleFile('com.aghstrategies.customcivistylesui', 'css/pricesetbuttons.css');
+        }
+      }
+    }
+  }
+}
+
+/**
  * Implements hook_civicrm_config().
  *
  * @link http://wiki.civicrm.org/confluence/display/CRMDOC/hook_civicrm_config

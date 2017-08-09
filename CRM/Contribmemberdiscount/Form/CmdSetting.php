@@ -7,70 +7,96 @@
  */
 class CRM_Contribmemberdiscount_Form_CmdSetting extends CRM_Core_Form {
   public function buildQuickForm() {
+    $this->addEntityRef('contribpages', ts('Select Contribution Pages'), array(
+      'entity' => 'ContributionPage',
+      'placeholder' => ts('- Select Contribution Pages -'),
+      'select' => array('minimumInputLength' => 0),
+      'multiple' => TRUE,
+    ));
 
-    // add form elements
-    $this->add(
-      'select', // field type
-      'favorite_color', // field name
-      'Favorite Color', // field label
-      $this->getColorOptions(), // list of options
-      TRUE // is required
-    );
+    $this->addEntityRef('memtypes', ts('Select Membership Types'), array(
+      'entity' => 'MembershipType',
+      'placeholder' => ts('- Select Membership Type -'),
+      'select' => array('minimumInputLength' => 0),
+      'multiple' => TRUE,
+    ));
+
+    $this->addEntityRef('memstatus', ts("Select Membership Status's"), array(
+      'entity' => 'MembershipStatus',
+      'placeholder' => ts('- Select Membership Status -'),
+      'select' => array('minimumInputLength' => 0),
+      'multiple' => TRUE,
+    ));
+
+    // TODO add validation to make sure this is a number here
+    $this->add('text', 'amount', ts('Discount Amount'));
+
     $this->addButtons(array(
       array(
         'type' => 'submit',
-        'name' => ts('Submit'),
+        'name' => ts('Save', array('domain' => 'com.aghstrategies.contribmemberdiscount')),
         'isDefault' => TRUE,
       ),
     ));
+    // Send element names to the form.
+    $this->assign('elementNames', array('contribpages', 'memtypes', 'memstatus', 'amount'));
 
-    // export form elements
-    $this->assign('elementNames', $this->getRenderableElementNames());
+    // Set Defaults
+    $defaults = array();
+    try {
+      $existingSetting = civicrm_api3('Setting', 'get', array(
+        'sequential' => 1,
+        'return' => array("contribmemberdiscount_contribpages", "contribmemberdiscount_memtypes", "contribmemberdiscount_memstatus", "contribmemberdiscount_amount"),
+      ));
+    }
+    catch (CiviCRM_API3_Exception $e) {
+      $error = $e->getMessage();
+      CRM_Core_Error::debug_log_message(t('API Error: %1', array(1 => $error, 'domain' => 'com.aghstrategies.contribmemberdiscount')));
+    }
+
+    $fieldsToSettings = $this->fieldsToSetting();
+    foreach ($fieldsToSettings as $field => $setting) {
+      if (!empty($existingSetting['values'][0][$setting])) {
+        $defaults[$field] = $existingSetting['values'][0][$setting];
+      }
+    }
+
+    $this->setDefaults($defaults);
     parent::buildQuickForm();
   }
 
   public function postProcess() {
     $values = $this->exportValues();
-    $options = $this->getColorOptions();
-    CRM_Core_Session::setStatus(ts('You picked color "%1"', array(
-      1 => $options[$values['favorite_color']],
-    )));
+    $params = array();
+    $fieldsToSettings = $this->fieldsToSetting();
+    foreach ($fieldsToSettings as $field => $setting) {
+      if (!empty($values[$field])) {
+        $params[$setting] = $values[$field];
+      }
+    }
+    try {
+      $result = civicrm_api3('Setting', 'create', $params);
+      CRM_Core_Session::setStatus(ts('You have successfully updated the civicontribution pages to apply the membership discount to.', array('domain' => 'com.aghstrategies.contribmemberdiscount')), 'Settings saved', 'success');
+    }
+    catch (CiviCRM_API3_Exception $e) {
+      $error = $e->getMessage();
+      CRM_Core_Error::debug_log_message(t('API Error: %1', array(1 => $error, 'domain' => 'com.aghstrategies.contribmemberdiscount')));
+      CRM_Core_Session::setStatus(ts('Error saving pages for contribution pages', array('domain' => 'com.aghstrategies.contribmemberdiscount')), 'Error', 'error');
+    }
     parent::postProcess();
   }
 
-  public function getColorOptions() {
-    $options = array(
-      '' => ts('- select -'),
-      '#f00' => ts('Red'),
-      '#0f0' => ts('Green'),
-      '#00f' => ts('Blue'),
-      '#f0f' => ts('Purple'),
-    );
-    foreach (array('1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e') as $f) {
-      $options["#{$f}{$f}{$f}"] = ts('Grey (%1)', array(1 => $f));
-    }
-    return $options;
-  }
-
   /**
-   * Get the fields/elements defined in this form.
-   *
-   * @return array (string)
+   * Array that matches field to setting
+   * @return [type] [description]
    */
-  public function getRenderableElementNames() {
-    // The _elements list includes some items which should not be
-    // auto-rendered in the loop -- such as "qfKey" and "buttons".  These
-    // items don't have labels.  We'll identify renderable by filtering on
-    // the 'label'.
-    $elementNames = array();
-    foreach ($this->_elements as $element) {
-      /** @var HTML_QuickForm_Element $element */
-      $label = $element->getLabel();
-      if (!empty($label)) {
-        $elementNames[] = $element->getName();
-      }
-    }
-    return $elementNames;
+  public function fieldsToSetting() {
+    return array(
+      'contribpages' => 'contribmemberdiscount_contribpages',
+      'memtypes' => 'contribmemberdiscount_memtypes',
+      'memstatus' => 'contribmemberdiscount_memstatus',
+      'amount' => 'contribmemberdiscount_amount',
+    );
   }
 
 }

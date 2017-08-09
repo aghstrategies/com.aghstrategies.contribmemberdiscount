@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<menu>
+  <item>
+    <path>civicrm/cmdsetting</path>
+    <page_callback>CRM_Contribmemberdiscount_Form_CmdSetting</page_callback>
+    <title>CmdSetting</title>
+    <access_arguments>access CiviCRM</access_arguments>
+  </item>
+</menu>

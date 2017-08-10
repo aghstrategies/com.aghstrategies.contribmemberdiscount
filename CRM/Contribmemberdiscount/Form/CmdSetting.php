@@ -6,13 +6,36 @@
  * @see https://wiki.civicrm.org/confluence/display/CRMDOC/QuickForm+Reference
  */
 class CRM_Contribmemberdiscount_Form_CmdSetting extends CRM_Core_Form {
+
+  protected $select2style = array();
+
   public function buildQuickForm() {
+
     $this->addEntityRef('contribpages', ts('Select Contribution Pages'), array(
       'entity' => 'ContributionPage',
       'placeholder' => ts('- Select Contribution Pages -'),
       'select' => array('minimumInputLength' => 0),
       'multiple' => TRUE,
     ));
+
+    //From cividiscount for styling price field option select
+    $this->select2style = array(
+      'placeholder' => ts('- none -'),
+      'multiple' => TRUE,
+      'class' => 'crm-select2 huge',
+    );
+    $pricesets = CRM_CiviDiscount_Utils::getNestedPriceSets();
+    if (!empty($pricesets)) {
+      // $this->_multiValued['pricesets'] = $pricesets;
+      $this->add('select',
+        'pricefieldoptions',
+        ts('Price Field Options'),
+        $pricesets,
+        FALSE,
+        array('placeholder' => ts('- any -')) + $this->select2style
+      );
+    }
+    // end code from cividiscount
 
     $this->addEntityRef('memtypes', ts('Select Membership Types'), array(
       'entity' => 'MembershipType',
@@ -39,7 +62,7 @@ class CRM_Contribmemberdiscount_Form_CmdSetting extends CRM_Core_Form {
       ),
     ));
     // Send element names to the form.
-    $this->assign('elementNames', array('contribpages', 'memtypes', 'memstatus', 'amount'));
+    $this->assign('elementNames', array('contribpages', 'pricefieldoptions', 'memtypes', 'memstatus', 'amount'));
 
     // Set Defaults
     $defaults = array();
@@ -71,7 +94,12 @@ class CRM_Contribmemberdiscount_Form_CmdSetting extends CRM_Core_Form {
     $fieldsToSettings = $this->fieldsToSetting();
     foreach ($fieldsToSettings as $field => $setting) {
       if (!empty($values[$field])) {
-        $params[$setting] = $values[$field];
+        if ($field !== 'amount' && gettype($values[$field]) == 'string') {
+          $params[$setting] = explode(',', $values[$field]);
+        }
+        else {
+          $params[$setting] = $values[$field];
+        }
       }
     }
     try {
@@ -93,6 +121,7 @@ class CRM_Contribmemberdiscount_Form_CmdSetting extends CRM_Core_Form {
   public function fieldsToSetting() {
     return array(
       'contribpages' => 'contribmemberdiscount_contribpages',
+      'pricefieldoptions' => 'contribmemberdiscount_pricefieldoptions',
       'memtypes' => 'contribmemberdiscount_memtypes',
       'memstatus' => 'contribmemberdiscount_memstatus',
       'amount' => 'contribmemberdiscount_amount',

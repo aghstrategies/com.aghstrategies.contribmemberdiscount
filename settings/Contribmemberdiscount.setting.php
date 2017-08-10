@@ -18,6 +18,18 @@ return array(
     'description' => 'Array of Pages to apply member discount on',
     'help_text' => 'civicontribute page(s) for which membership discount should be applied',
   ),
+  'contribmemberdiscount_pricefieldoptions' => array(
+    'group_name' => 'Membership Contribution Discount',
+    'group' => 'contribmemberdiscount',
+    'name' => 'contribmemberdiscount_pricefieldoptions',
+    'type' => 'Array',
+    'default' => NULL,
+    'add' => '4.6',
+    'is_domain' => 1,
+    'is_contact' => 0,
+    'description' => 'Array of Price field options to apply discount to',
+    'help_text' => 'civicontribute pricefield option(s) for which membership discount should be applied',
+  ),
   'contribmemberdiscount_memtypes' => array(
     'group_name' => 'Membership Contribution Discount',
     'group' => 'contribmemberdiscount',

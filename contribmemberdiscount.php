@@ -9,29 +9,139 @@ require_once 'contribmemberdiscount.civix.php';
  */
 function contribmemberdiscount_civicrm_buildForm($formName, &$form) {
   if ($formName == 'CRM_Contribute_Form_Contribution_Main') {
+    if (contribmemberdiscount_isQualifyingPage($form->getVar('_id'))) {
+      // $memInfo = contribmemberdiscount_getQualifyingMemInfo();
+      $contactId = $form->getContactID();
+      // IF the contact is logged in
+      if (!empty($contactId)) {
+        // TODO make membership types and statuses into variables so we can print them in messages
+        if (contribmemberdiscount_isQualifyingMember($contactId)) {
+          CRM_Core_Session::setStatus(ts('You are logged in as a member who qualifies for a discount'), '', 'no-popup');
+        }
+        else {
+          CRM_Core_Session::setStatus(ts('Members recieve a discount on this page sign up today'), '', 'no-popup');
+        }
+      }
+      else {
+        CRM_Core_Session::setStatus(ts('You are not logged in, Members receive a discount if you are a member please login, if you are interested in becoming a member please visit XXX'), '', 'no-popup');
+      }
+    }
+  }
+}
+
+function contribmemberdiscount_civicrm_buildAmount($pageType, &$form, &$amount) {
+  if ($pageType == 'contribution') {
+    // If qualifying page
+    if (contribmemberdiscount_isQualifyingPage($form->getVar('_id'))) {
+      $contactId = $form->getContactID();
+      // IF the contact is logged in
+      if (!empty($contactId)) {
+        // IF qualified member with qualifing status
+        if (contribmemberdiscount_isQualifyingMember($contactId)) {
+          try {
+            $discountAmount = civicrm_api3('Setting', 'get', array(
+              'sequential' => 1,
+              'return' => array("contribmemberdiscount_amount", "contribmemberdiscount_pricefieldoptions"),
+            ));
+          }
+          catch (CiviCRM_API3_Exception $e) {
+            $error = $e->getMessage();
+            CRM_Core_Error::debug_log_message(t('API Error: %1', array(1 => $error, 'domain' => 'com.aghstrategies.customcivistylesui')));
+          }
+          if (!empty($discountAmount['values'][0]['contribmemberdiscount_pricefieldoptions'])) {
+            foreach ($amount as $priceField => &$details) {
+              foreach ($details['options'] as $priceOptionId => &$values) {
+                if (($values['amount'] - $discountAmount['values'][0]['contribmemberdiscount_amount']) > 0) {
+                  $values['label'] = $values['label'] . ' - includes a $' . $discountAmount['values'][0]['contribmemberdiscount_amount'] . ' discount because you are logged in as a qualifying member';
+                  $values['amount'] = $values['amount'] - $discountAmount['values'][0]['contribmemberdiscount_amount'];
+                }
+                else {
+                  $values['amount'] = 0;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+function contribmemberdiscount_isQualifyingPage($formId) {
+  $applyDiscount = FALSE;
+  try {
+    $pages = civicrm_api3('Setting', 'get', array(
+      'sequential' => 1,
+      'return' => 'contribmemberdiscount_contribpages',
+    ));
+  }
+  catch (CiviCRM_API3_Exception $e) {
+    $error = $e->getMessage();
+    CRM_Core_Error::debug_log_message(t('API Error: %1', array(1 => $error, 'domain' => 'com.aghstrategies.customcivistylesui')));
+  }
+  // If setting for contribution pages to apply discount on is set
+  if (!empty($pages['values'][0]['contribmemberdiscount_contribpages'])) {
+    // IF on a page that the setting is set for
+    if (in_array($formId, $pages['values'][0]['contribmemberdiscount_contribpages'])) {
+      $memInfo = contribmemberdiscount_getQualifyingMemInfo();
+      if (!empty($memInfo['memtype']) && !empty($memInfo['memstatus'])) {
+        $applyDiscount = TRUE;
+      }
+    }
+  }
+  return $applyDiscount;
+}
+
+function contribmemberdiscount_getQualifyingMemInfo() {
+  $memtypes = $memstatus = NULL;
+  try {
+    $qualifyingMemSetting = civicrm_api3('Setting', 'get', array(
+      'sequential' => 1,
+      'return' => array("contribmemberdiscount_memtypes", "contribmemberdiscount_memstatus"),
+    ));
+  }
+  catch (CiviCRM_API3_Exception $e) {
+    $error = $e->getMessage();
+    CRM_Core_Error::debug_log_message(t('API Error: %1', array(1 => $error, 'domain' => 'com.aghstrategies.customcivistylesui')));
+  }
+  if (!empty($qualifyingMemSetting['values'][0]['contribmemberdiscount_memtypes'])) {
+    $memtypes = $qualifyingMemSetting['values'][0]['contribmemberdiscount_memtypes'];
+  }
+  if (!empty($qualifyingMemSetting['values'][0]['contribmemberdiscount_memstatus'])) {
+    $memstatus = $qualifyingMemSetting['values'][0]['contribmemberdiscount_memstatus'];
+  }
+  return array(
+    'memtype' => $memtypes,
+    'memstatus' => $memstatus,
+  );
+}
+
+function contribmemberdiscount_isQualifyingMember($contactId) {
+  // TODO make three responses, expired or non qualifying status, not qualified, qualified
+  $qualified = FALSE;
+  $memInfo = contribmemberdiscount_getQualifyingMemInfo();
+  if (!empty($contactId)) {
+    $params = array(
+      'contact_id' => $contactId,
+      'membership_type_id' => array('IN' => $memInfo['memtype']),
+      'status_id' => array('IN' => $memInfo['memstatus']),
+      'sequential' => 1,
+    );
     try {
-      $pages = civicrm_api3('Setting', 'get', array(
-        'sequential' => 1,
-        'return' => 'contribmemberdiscount_contribpages',
-      ));
+      $membership = civicrm_api3('Membership', 'get', $params);
     }
     catch (CiviCRM_API3_Exception $e) {
       $error = $e->getMessage();
       CRM_Core_Error::debug_log_message(t('API Error: %1', array(1 => $error, 'domain' => 'com.aghstrategies.customcivistylesui')));
     }
-    if (!empty($pages['values'][0]['contribmemberdiscount_contribpages'])) {
-      print_r($pages['values'][0]['contribmemberdiscount_contribpages']); die();
-      if ($formName == 'CRM_Contribute_Form_Contribution_Main') {
-        if (in_array($form->getVar('_id'), $pages['values'][0]['contribmemberdiscount_contribpages'])) {
-          // check if user is logged in if so continue if not display message about discount
-          // check if user has proper membership type / status
-          // If user is logged in and has proper membership type and status do discount of amount to all price options
-          // CRM_Core_Resources::singleton()->addScriptFile('com.aghstrategies.customcivistylesui', 'js/pricesetbuttons.js');
-          // CRM_Core_Resources::singleton()->addStyleFile('com.aghstrategies.customcivistylesui', 'css/pricesetbuttons.css');
-        }
-      }
+    if (!empty($membership['values'][0]['id'])) {
+      $qualified = TRUE;
+    }
+    else {
+      $qualified = FALSE;
     }
   }
+  return $qualified;
 }
 
 /**

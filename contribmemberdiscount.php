@@ -23,7 +23,7 @@ function contribmemberdiscount_civicrm_buildForm($formName, &$form) {
         }
       }
       else {
-        CRM_Core_Session::setStatus(ts('You are not logged in, Members receive a discount if you are a member please login, if you are interested in becoming a member please visit XXX'), '', 'no-popup');
+        CRM_Core_Session::setStatus(ts('You are not logged in. If you are a member of the RAIC, please login to your account to receive discounted submission fees. If you are interested in becoming a member please contact membership@raic.org.'), '', 'no-popup');
       }
     }
   }
@@ -52,7 +52,7 @@ function contribmemberdiscount_civicrm_buildAmount($pageType, &$form, &$amount) 
             foreach ($amount as $priceField => &$details) {
               foreach ($details['options'] as $priceOptionId => &$values) {
                 if (($values['amount'] - $discountAmount['values'][0]['contribmemberdiscount_amount']) > 0) {
-                  $values['label'] = $values['label'] . ' - includes a $' . $discountAmount['values'][0]['contribmemberdiscount_amount'] . ' discount because you are logged in as a qualifying member';
+                  $values['label'] = $values['label'] . ' - $' . $discountAmount['values'][0]['contribmemberdiscount_amount'] . ' member discount applied';
                   $values['amount'] = $values['amount'] - $discountAmount['values'][0]['contribmemberdiscount_amount'];
                 }
                 else {

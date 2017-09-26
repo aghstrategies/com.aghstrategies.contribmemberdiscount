@@ -54,6 +54,9 @@ function contribmemberdiscount_civicrm_buildAmount($pageType, &$form, &$amount) 
                 if (($values['amount'] - $discountAmount['values'][0]['contribmemberdiscount_amount']) > 0) {
                   $values['label'] = $values['label'] . ' - $' . $discountAmount['values'][0]['contribmemberdiscount_amount'] . ' member discount applied';
                   $values['amount'] = $values['amount'] - $discountAmount['values'][0]['contribmemberdiscount_amount'];
+                  if (!empty($values['tax_amount']) && !empty($values['tax_rate'])) {
+                    $values['tax_amount'] = $values['amount'] * ($values['tax_rate'] / 100);
+                  }
                 }
                 else {
                   $values['amount'] = 0;
